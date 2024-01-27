@@ -200,8 +200,7 @@ pathway_annotation <-
             "The number of statistically significant pathways exceeds the database's query limit. Please consider breaking down the analysis into smaller queries or selecting a subset of pathways for further investigation."
           )
           cat("\n") # New line
-        }
-        if (nrow(daa_results_filtered_df) <= 10) {
+        } else if (nrow(daa_results_filtered_df) <= 10) {
           cat("\n") # New line
           message("Processing pathways individually...")
           cat("\n") # New line
@@ -251,7 +250,7 @@ pathway_annotation <-
           message("Pathway annotation completed.")
           cat("\n") # New line
         }
-        if (nrow(daa_results_filtered_df) > 10 && nrow(daa_results_filtered_df) < 99) {
+        else {
           cat("\n") # New line
           message("Processing pathways in chunks...")
           cat("\n") # New line
