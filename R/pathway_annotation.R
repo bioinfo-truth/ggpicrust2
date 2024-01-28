@@ -8,6 +8,8 @@
 #' @param pathway A character, consisting of "EC", "KO", "MetaCyc"
 #' @param daa_results_df A data frame, output of pathway_daa. Provide this parameter when using the function for the second use case.
 #' @param ko_to_kegg A logical, decide if convert KO abundance to KEGG pathway abundance. Default is FALSE. Set to TRUE when using the function for the second use case.
+#' @param kegg_limit A numeric, the number of KEGG pathways to be queried at once. It's predefined. Do not change this parameter.
+#' @param df_size_limit A numeric, the rows of the data.frame to be queried in total.
 #'
 #' @return A data frame containing pathway annotation information. The data frame has the following columns:
 #' \itemize{
@@ -59,7 +61,9 @@ pathway_annotation <-
   function(file = NULL,
            pathway = NULL,
            daa_results_df = NULL,
-           ko_to_kegg = FALSE) {
+           ko_to_kegg = FALSE,
+           kegg_limit = 10,
+           df_size_limit = 150) {
 
     message("Starting pathway annotation...")
 
@@ -194,30 +198,92 @@ pathway_annotation <-
         message(
           "We are connecting to the KEGG database to get the latest results, please wait patiently."
         )
-        if (nrow(daa_results_filtered_df) > 100) {
+
+        # KEGG only allows 10 results at once.
+        #kegg_limit <- 10
+
+        if (nrow(daa_results_filtered_df) > df_size_limit) {
           cat("\n") # New line
           message(
             "The number of statistically significant pathways exceeds the database's query limit. Please consider breaking down the analysis into smaller queries or selecting a subset of pathways for further investigation."
           )
           cat("\n") # New line
-        } else if (nrow(daa_results_filtered_df) <= 10) {
+#        } else if (nrow(daa_results_filtered_df) <= 10) {
+#          cat("\n") # New line
+#          message("Processing pathways individually...")
+#          cat("\n") # New line
+#
+#          # Initialize a text progress bar
+#          pb <- txtProgressBar(min = 0, max = nrow(daa_results_filtered_df), style = 3)
+#
+#          for (i in seq_len(nrow(daa_results_filtered_df))) {
+#            cat("\n") # New line
+#            message("Beginning annotation for pathway ", i, " of ", nrow(daa_results_filtered_df), "...")
+#            cat("\n") # New line
+#            a <- 0
+#            start_time <- Sys.time() # start timer
+#            repeat {
+#              tryCatch(
+#                {
+#                  keggGet_results[[i]] <- KEGGREST::keggGet(daa_results_filtered_df$feature[i])
+#                  a <- 1
+#                },
+#                error = function(e) {
+#                  cat("\n") # New line
+#                  message("An error occurred. Retrying...")
+#                  cat("\n") # New line
+#                }
+#              )
+#              if (a == 1) {
+#                break
+#              }
+#            }
+#            end_time <- Sys.time() # end timer
+#            time_taken <- end_time - start_time # calculate time taken
+#            cat("\n") # New line
+#            message("Annotated pathway ", i, " of ", nrow(daa_results_filtered_df), ". Time taken: ", round(time_taken, 2), " seconds.")
+#            cat("\n") # New line
+#
+#            daa_results_filtered_df[i, ]$pathway_name <- keggGet_results[[i]][[1]]$NAME
+#            daa_results_filtered_df[i, ]$pathway_description <- keggGet_results[[i]][[1]]$DESCRIPTION[1]
+#            daa_results_filtered_df[i, ]$pathway_class <- keggGet_results[[i]][[1]]$CLASS
+#            daa_results_filtered_df[i, ]$pathway_map <- keggGet_results[[i]][[1]]$PATHWAY_MAP
+#
+#            # Update the progress bar
+#            setTxtProgressBar(pb, i)
+#          }
+#          # Close the progress bar
+#          close(pb)
+#          cat("\n") # New line
+#          message("Pathway annotation completed.")
+#          cat("\n") # New line
+        } else { # Between 10 and 100.
           cat("\n") # New line
-          message("Processing pathways individually...")
+          message("Processing pathways in chunks...")
           cat("\n") # New line
 
           # Initialize a text progress bar
           pb <- txtProgressBar(min = 0, max = nrow(daa_results_filtered_df), style = 3)
 
-          for (i in seq_len(nrow(daa_results_filtered_df))) {
-            cat("\n") # New line
-            message("Beginning annotation for pathway ", i, " of ", nrow(daa_results_filtered_df), "...")
-            cat("\n") # New line
-            a <- 0
-            start_time <- Sys.time() # start timer
-            repeat {
+          start_time <- Sys.time() # start timer
+
+          # Extract the proper chunk of features to KEGGREST.
+          # Modified by Han Hu: 01/24/2024
+
+          # Calculate the number of rounds based on the kegg_limit.
+          num_rounds <- ceiling(nrow(daa_results_filtered_df) / kegg_limit)
+
+          # Extract the features within range and query in KEGGREST.
+          for(idx in 1:num_rounds) {
+            start_idx <- (idx - 1) * kegg_limit + 1
+            end_idx <- min(idx * kegg_limit, nrow(daa_results_filtered_df))
+
+            repeat{
               tryCatch(
                 {
-                  keggGet_results[[i]] <- KEGGREST::keggGet(daa_results_filtered_df$feature[i])
+                  # If some IDs are not found in the database, no error thrown:(
+                  keggGet_results[[idx]] <- KEGGREST::keggGet(daa_results_filtered_df$feature[start_idx:end_idx])
+                  names(keggGet_results[[idx]]) <- unlist(purrr::map(keggGet_results[[idx]], list("ENTRY", 1)))
                   a <- 1
                 },
                 error = function(e) {
@@ -230,82 +296,80 @@ pathway_annotation <-
                 break
               }
             }
-            end_time <- Sys.time() # end timer
-            time_taken <- end_time - start_time # calculate time taken
-            cat("\n") # New line
-            message("Annotated pathway ", i, " of ", nrow(daa_results_filtered_df), ". Time taken: ", round(time_taken, 2), " seconds.")
-            cat("\n") # New line
 
-            daa_results_filtered_df[i, ]$pathway_name <- keggGet_results[[i]][[1]]$NAME
-            daa_results_filtered_df[i, ]$pathway_description <- keggGet_results[[i]][[1]]$DESCRIPTION[1]
-            daa_results_filtered_df[i, ]$pathway_class <- keggGet_results[[i]][[1]]$CLASS
-            daa_results_filtered_df[i, ]$pathway_map <- keggGet_results[[i]][[1]]$PATHWAY_MAP
-
-            # Update the progress bar
-            setTxtProgressBar(pb, i)
-          }
-          # Close the progress bar
-          close(pb)
-          cat("\n") # New line
-          message("Pathway annotation completed.")
-          cat("\n") # New line
-        }
-        else {
-          cat("\n") # New line
-          message("Processing pathways in chunks...")
-          cat("\n") # New line
-
-          # Initialize a text progress bar
-          pb <- txtProgressBar(min = 0, max = nrow(daa_results_filtered_df), style = 3)
-
-          start_time <- Sys.time() # start timer
-          n <- length(c(seq(10, nrow(daa_results_filtered_df), 10), nrow(daa_results_filtered_df)))
-          j <- 1
-          seq <- c(seq(10, nrow(daa_results_filtered_df), 10), nrow(daa_results_filtered_df))
-          for (i in seq) {
-            if (i %% 10 == 0) {
-              keggGet_results[[j]] <- KEGGREST::keggGet(daa_results_filtered_df$feature[seq(i - 9, i, 1)])
-            } else {
-              keggGet_results[[j]] <- KEGGREST::keggGet(daa_results_filtered_df$feature[seq(nrow(daa_results_filtered_df) %/% 10 * 10 + 1, i, 1)])
+            safe_map <- function(df, property) {
+              safe_access <- function (x) {
+                if (!is.null(x[[property]]) && length(x[[property]]) >= 1) {
+                  return(x[[property]][[1]])
+                } else {
+                  return(NA)  # or return("") if you prefer an empty string for missing values
+                }
+              }
+              unlist(purrr::map(df, safe_access))
             }
-            j <- j + 1
 
-            # Update the progress bar
-            setTxtProgressBar(pb, i)
+            matched_idx <- (start_idx:end_idx)[which(daa_results_filtered_df$feature[start_idx:end_idx] %in% names(keggGet_results[[idx]]))]
+            # A potential bug: if the length of keggGet_results[[idx]] is different from end_idx - start_idx
+            daa_results_filtered_df[matched_idx, ]$pathway_name <- safe_map(keggGet_results[[idx]], "NAME")
+            daa_results_filtered_df[matched_idx, ]$pathway_description <- safe_map(keggGet_results[[idx]], "DESCRIPTION")
+            daa_results_filtered_df[matched_idx, ]$pathway_class <- safe_map(keggGet_results[[idx]], "CLASS")
+            daa_results_filtered_df[matched_idx, ]$pathway_map <- safe_map(keggGet_results[[idx]], "PATHWAY_MAP")
+
+            setTxtProgressBar(pb, end_idx)
           }
+
+#          n <- length(c(seq(10, nrow(daa_results_filtered_df), 10), nrow(daa_results_filtered_df)))
+#          j <- 1
+#          seq <- c(seq(10, nrow(daa_results_filtered_df), 10), nrow(daa_results_filtered_df))
+#          for (i in seq) {
+#            if (i %% 10 == 0) {
+#              keggGet_results[[j]] <- KEGGREST::keggGet(daa_results_filtered_df$feature[seq(i - 9, i, 1)])
+#            } else {
+#              keggGet_results[[j]] <- KEGGREST::keggGet(daa_results_filtered_df$feature[seq(nrow(daa_results_filtered_df) %/% 10 * 10 + 1, i, 1)])
+#            }
+#            j <- j + 1
+#
+#            # Update the progress bar
+#            setTxtProgressBar(pb, i)
+#          }
+
           end_time <- Sys.time() # end timer
           time_taken <- end_time - start_time # calculate time taken
           cat("\n") # New line
           message("Finished processing chunks. Time taken: ", round(time_taken, 2), " seconds.")
           cat("\n") # New line
 
-          message("Finalizing pathway annotations...")
-          cat("\n") # New line
-          start_time <- Sys.time() # start timer
-          for (k in 1:n) {
-            w <- length(keggGet_results[[k]])
-            for (j in 1:w) {
-              daa_results_filtered_df[daa_results_filtered_df$feature == keggGet_results[[k]][[j]]$ENTRY, ]$pathway_name <- keggGet_results[[k]][[j]]$NAME[1]
-              daa_results_filtered_df[daa_results_filtered_df$feature == keggGet_results[[k]][[j]]$ENTRY, ]$pathway_description <- keggGet_results[[k]][[j]]$DESCRIPTION[1]
-              daa_results_filtered_df[daa_results_filtered_df$feature == keggGet_results[[k]][[j]]$ENTRY, ]$pathway_class <- keggGet_results[[k]][[j]]$CLASS[1]
-              daa_results_filtered_df[daa_results_filtered_df$feature == keggGet_results[[k]][[j]]$ENTRY, ]$pathway_map <- keggGet_results[[k]][[j]]$PATHWAY_MAP[1]
-            }
-            # Update the progress bar
-            setTxtProgressBar(pb, k)
-          }
-          end_time <- Sys.time() # end timer
-          time_taken <- end_time - start_time # calculate time taken
-          cat("\n") # New line
-          message("Finished finalizing pathway annotations. Time taken: ", round(time_taken, 2), " seconds.")
-          cat("\n") # New line
+#          message("Finalizing pathway annotations...")
+#          cat("\n") # New line
+#          start_time <- Sys.time() # start timer
+#
+#
+#          for (k in 1:n) {
+#            w <- length(keggGet_results[[k]])
+#            for (j in 1:w) {
+#              daa_results_filtered_df[daa_results_filtered_df$feature == keggGet_results[[k]][[j]]$ENTRY, ]$pathway_name <- keggGet_results[[k]][[j]]$NAME[1]
+#              daa_results_filtered_df[daa_results_filtered_df$feature == keggGet_results[[k]][[j]]$ENTRY, ]$pathway_description <- keggGet_results[[k]][[j]]$DESCRIPTION[1]
+#              daa_results_filtered_df[daa_results_filtered_df$feature == keggGet_results[[k]][[j]]$ENTRY, ]$pathway_class <- keggGet_results[[k]][[j]]$CLASS[1]
+#              daa_results_filtered_df[daa_results_filtered_df$feature == keggGet_results[[k]][[j]]$ENTRY, ]$pathway_map <- keggGet_results[[k]][[j]]$PATHWAY_MAP[1]
+#            }
+#            # Update the progress bar
+#            setTxtProgressBar(pb, k)
+#          }
+#
+#
+#          end_time <- Sys.time() # end timer
+#          time_taken <- end_time - start_time # calculate time taken
+#          cat("\n") # New line
+#          message("Finished finalizing pathway annotations. Time taken: ", round(time_taken, 2), " seconds.")
+#          cat("\n") # New line
 
           # Close the progress bar
           close(pb)
         }
-        daa_results_filtered_annotation_df <-
-          daa_results_filtered_df
+        #daa_results_filtered_annotation_df <-
+        #  daa_results_filtered_df
         message("Returning DAA results filtered annotation data frame...")
-        return(daa_results_filtered_annotation_df)
+        return(daa_results_filtered_df)
       }
     }
   }
