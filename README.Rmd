@@ -15,29 +15,12 @@ knitr::opts_chunk$set(
 
 # ggpicrust2 vignettes
 
-🌟 **If you find `ggpicrust2` helpful, please consider giving us a star on GitHub!** Your support greatly motivates us to improve and maintain this project. 🌟
+This repository is a refactoring of the original ggpicrust2 project. If you like the idea of ggpicrust2, please give a star for the author (https://github.com/cafferychen777/ggpicrust2)
 
-*ggpicrust2* is a comprehensive package designed to provide a seamless and intuitive solution for analyzing and interpreting the results of PICRUSt2 functional prediction. It offers a wide range of features, including pathway name/description annotations, advanced differential abundance (DA) methods, and visualization of DA results. 
-
-One of the newest additions to *ggpicrust2* is the capability to compare the consistency and inconsistency across different DA methods applied to the same dataset. This feature allows users to assess the agreement and discrepancy between various methods when it comes to predicting and sequencing the metagenome of a particular sample. It provides valuable insights into the consistency of results obtained from different approaches and helps users evaluate the robustness of their findings.
-
-By leveraging this functionality, researchers, data scientists, and bioinformaticians can gain a deeper understanding of the underlying biological processes and mechanisms present in their PICRUSt2 output data. This comparison of different methods enables them to make informed decisions and draw reliable conclusions based on the consistency evaluation of macrogenomic predictions or sequencing results for the same sample.
-
-If you are interested in exploring and analyzing your PICRUSt2 output data, *ggpicrust2* is a powerful tool that provides a comprehensive set of features, including the ability to assess the consistency and evaluate the performance of different methods applied to the same dataset.
-
-[![CRAN version](https://www.r-pkg.org/badges/version/ggpicrust2)](https://CRAN.R-project.org/package=ggpicrust2) [![Downloads](https://cranlogs.r-pkg.org/badges/grand-total/ggpicrust2)](https://CRAN.R-project.org/package=ggpicrust2) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/license/mit/)
 
 ## News
-
-🌟 Introducing `MicrobiomeStat`: Generate Dozens of Pages of Detailed Reports in a Single Click
-
-We're pleased to introduce `MicrobiomeStat`, our latest R package tailored for **longitudinal microbiome data** analysis. Designed to work efficiently with 16s rRNA microbiome data, `MicrobiomeStat` integrates comprehensive statistical tests and clear visualizations, offering a practical solution for microbiome researchers.
-
-`MicrobiomeStat` aims to simplify the complexities of microbiome data analysis. It's well-suited for various research needs, whether you're dealing with multi-omics data or cross-sectional studies. The package is designed to be user-friendly, accommodating both new and experienced researchers in the field.
-
-For those engaged in microbiome research, `MicrobiomeStat` provides a straightforward approach to data analysis. Discover its full capabilities and learn more about how it can enhance your research at the [MicrobiomeStat Wiki](https://www.microbiomestat.wiki/). You can also access the tool directly on GitHub: [MicrobiomeStat GitHub Repository](https://github.com/cafferychen777/MicrobiomeStat).
-
-We appreciate your support and interest in our tools and look forward to seeing the contributions `MicrobiomeStat` can make to your research endeavors.
+* Updated the `pathway_annotation()` function to remove the limit of 100 entries 
+* Working on support of multiple groups for `pathway_errorbar()`
 
 ## Table of Contents
 
