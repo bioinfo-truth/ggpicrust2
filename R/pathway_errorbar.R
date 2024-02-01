@@ -166,7 +166,7 @@ pathway_errorbar <-
         x_lab <- "description"
       }
 
-      if (is.null(daa_results_df$pathway_name)&is.null(daa_results_df$description)){
+      if (is.null(daa_results_df$pathway_name) & is.null(daa_results_df$description)){
         message(
           "Please utilize the 'pathway_annotation' function to annotate the 'daa_results_df' data frame."
         )
@@ -203,7 +203,7 @@ pathway_errorbar <-
     } else {
       daa_results_filtered_sub_df <- daa_results_filtered_df
     }
-    if (nrow(daa_results_filtered_sub_df) > 30) {
+    if (length(unique(daa_results_filtered_sub_df$feature)) > 30) {
       message(
         paste0(
           "The number of features with statistical significance exceeds 30, leading to suboptimal visualization. ",
@@ -323,7 +323,7 @@ pathway_errorbar <-
               factor(error_bar_pivot_longer_tibble_summarised_ordered$group)
             )))
     }
-    error_bar_pivot_longer_tibble_summarised_ordered$name <- factor(error_bar_pivot_longer_tibble_summarised_ordered$name, levels = rev(daa_results_filtered_sub_df$feature))
+    error_bar_pivot_longer_tibble_summarised_ordered$name <- factor(error_bar_pivot_longer_tibble_summarised_ordered$name, levels = rev(unique(daa_results_filtered_sub_df$feature)))
 
     bar_errorbar <-
       ggplot2::ggplot(error_bar_pivot_longer_tibble_summarised_ordered, # nolint: object_usage_linter.
@@ -423,7 +423,7 @@ pathway_errorbar <-
       mean <- error_bar_pivot_longer_tibble_summarised_ordered[error_bar_pivot_longer_tibble_summarised_ordered$name %in% i,]$mean
       daa_results_filtered_sub_df[daa_results_filtered_sub_df$feature==i,]$log_2_fold_change <- log2(mean[1]/mean[2])
     }
-    daa_results_filtered_sub_df$feature <- factor(daa_results_filtered_sub_df$feature,levels = rev(daa_results_filtered_sub_df$feature))
+    daa_results_filtered_sub_df$feature <- factor(daa_results_filtered_sub_df$feature,levels = rev(unique(daa_results_filtered_sub_df$feature)))
     p_values_bar <- daa_results_filtered_sub_df %>%
       ggplot2::ggplot(ggplot2::aes(feature, log_2_fold_change, fill = group_nonsense)) +
       ggplot2::geom_bar(stat = "identity",
